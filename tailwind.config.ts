@@ -47,6 +47,15 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        surface: "hsl(var(--surface))",
+        chat: {
+          self: "hsl(var(--chat-bubble-self))",
+          "self-foreground": "hsl(var(--chat-bubble-self-foreground))",
+          other: "hsl(var(--chat-bubble-other))",
+          "other-foreground": "hsl(var(--chat-bubble-other-foreground))",
+          encrypted: "hsl(var(--chat-encrypted))",
+          "encrypted-foreground": "hsl(var(--chat-encrypted-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -58,6 +67,11 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      fontFamily: {
+        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
+        cursive: ['"Dancing Script"', 'cursive'],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -65,25 +79,41 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+        "emotion-pop": {
+          "0%": { transform: "scale(0.3)", opacity: "0" },
+          "15%": { transform: "scale(1.2)", opacity: "1" },
+          "30%": { transform: "scale(1)", opacity: "1" },
+          "80%": { transform: "scale(1)", opacity: "1" },
+          "100%": { transform: "scale(1.5)", opacity: "0" },
+        },
+        "mood-bounce": {
+          "0%, 100%": { transform: "scale(1)" },
+          "25%": { transform: "scale(1.2) rotate(-5deg)" },
+          "50%": { transform: "scale(1.3) rotate(5deg)" },
+          "75%": { transform: "scale(1.15) rotate(-3deg)" },
+        },
+        "letter-shake": {
+          "0%, 100%": { transform: "rotate(0deg) scale(1)" },
+          "10%": { transform: "rotate(-8deg) scale(1.1)" },
+          "20%": { transform: "rotate(8deg) scale(1.15)" },
+          "30%": { transform: "rotate(-6deg) scale(1.1)" },
+          "40%": { transform: "rotate(6deg) scale(1.05)" },
+          "50%": { transform: "rotate(0deg) scale(1)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "emotion-pop": "emotion-pop 2s ease-out forwards",
+        "mood-bounce": "mood-bounce 2s ease-in-out infinite",
+        "letter-shake": "letter-shake 1.5s ease-in-out infinite",
       },
     },
   },
