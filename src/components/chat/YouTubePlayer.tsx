@@ -126,6 +126,7 @@ export default function YouTubePlayer({
   };
 
   if (!videoId) {
+    if (readOnly) return null;
     return (
       <div className="border-b border-border bg-surface px-3 py-2">
         <div className="flex items-center gap-2">
