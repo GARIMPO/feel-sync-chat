@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { getAblyClient } from "@/lib/ably";
 import { encryptMessage, decryptMessage } from "@/lib/crypto";
 import { playBeep } from "@/lib/beep";
+import { getPublicRoom } from "@/store/publicRooms";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -162,8 +163,14 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const room = searchParams.get("room");
   const isAdmin = searchParams.get("admin") === "true";
+  const ownerParam = searchParams.get("owner") || "";
 
   const [nickname, setNickname] = useState("");
+
+  // Check if current user is the room owner (creator)
+  const publicRoom = room ? getPublicRoom(room) : undefined;
+  const isOwner = !!(publicRoom && nickname && publicRoom.creator === nickname) || !!(ownerParam && nickname && ownerParam === nickname);
+  const hasModPowers = isAdmin || isOwner;
   const [roomPassword, setRoomPassword] = useState("");
   const [joined, setJoined] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -726,7 +733,7 @@ export default function ChatPage() {
                 {time}
               </p>
               <div className="flex items-center gap-1">
-                {isAdmin && (
+                {hasModPowers && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <button
@@ -934,9 +941,12 @@ export default function ChatPage() {
               <SelectItem value="xxlarge">Enorme</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="ghost" size="icon" onClick={() => setShowYouTubeInput(!showYouTubeInput)} title="YouTube" className="h-8 w-8">
-            <Music className="h-4 w-4 text-primary" />
-          </Button>
+          {hasModPowers && (
+            <Button variant="ghost" size="icon" onClick={() => setShowYouTubeInput(!showYouTubeInput)} title="YouTube" className="h-8 w-8">
+              <Music className="h-4 w-4 text-primary" />
+            </Button>
+          )}
+          {hasModPowers && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="icon" title="Apagar histórico" className="h-8 w-8">
@@ -954,6 +964,7 @@ export default function ChatPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="sm" title="Sair da sala" className="h-8 gap-1 text-xs text-destructive">
