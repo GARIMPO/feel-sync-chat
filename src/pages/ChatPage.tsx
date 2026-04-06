@@ -964,6 +964,7 @@ export default function ChatPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="ghost" size="sm" title="Sair da sala" className="h-8 gap-1 text-xs text-destructive">
