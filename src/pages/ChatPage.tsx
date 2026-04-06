@@ -164,12 +164,13 @@ export default function ChatPage() {
   const room = searchParams.get("room");
   const isAdmin = searchParams.get("admin") === "true";
   const ownerParam = searchParams.get("owner") || "";
+  const isPublicParam = searchParams.get("public") === "true";
 
   const [nickname, setNickname] = useState("");
 
   // Check if current user is the room owner (creator)
   const publicRoom = room ? getPublicRoom(room) : undefined;
-  const isPublicRoom = !!publicRoom;
+  const isPublicRoom = isPublicParam || !!publicRoom;
   const isOwner = !!(publicRoom && nickname && publicRoom.creator === nickname) || !!(ownerParam && nickname && ownerParam === nickname);
   const hasModPowers = isAdmin || isOwner;
   const [roomPassword, setRoomPassword] = useState("");
