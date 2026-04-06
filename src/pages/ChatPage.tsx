@@ -75,6 +75,7 @@ interface YouTubeEvent {
   videoId: string | null;
   isPlaying: boolean;
   seekTime?: number;
+  timestamp?: number;
 }
 
 const CHAT_FONT_SIZES: Record<string, string> = {
@@ -208,6 +209,7 @@ export default function ChatPage() {
   const nicknameRef = useRef("");
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const ytTimeRef = useRef<number>(0);
 
   const prevLangRef = useRef("");
   
@@ -322,10 +324,18 @@ export default function ChatPage() {
       const data = msg.data as YouTubeEvent;
       setYtVideo(data);
       if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(data));
+      // If event includes seekTime, apply it
+      if (data.seekTime != null) {
+        setYtSeekTo(data.seekTime);
+      }
     });
     channel.subscribe("youtube-seek", (msg: Ably.Message) => {
       const { time } = msg.data as { time: number };
       setYtSeekTo(time);
+    });
+    // Owner responds to sync requests from new joiners
+    channel.subscribe("youtube-sync-request", () => {
+      // This will be handled by the owner via an effect
     });
     channel.subscribe("user-join", (msg: Ably.Message) => {
       const data = msg.data as { nickname: string; mood?: string };
@@ -436,6 +446,29 @@ export default function ChatPage() {
       return deduped;
     });
   }, [room]);
+
+  const handleYouTubeTimeUpdate = useCallback((time: number) => {
+    ytTimeRef.current = time;
+  }, []);
+
+  // Owner: respond to sync requests from new joiners
+  useEffect(() => {
+    if (!hasModPowers || !channelRef.current || !ytVideo.videoId) return;
+    const handler = () => {
+      const evt: YouTubeEvent = { ...ytVideo, seekTime: ytTimeRef.current, timestamp: Date.now() };
+      channelRef.current?.publish("youtube", evt);
+    };
+    channelRef.current.subscribe("youtube-sync-request", handler);
+    return () => {
+      channelRef.current?.unsubscribe("youtube-sync-request", handler);
+    };
+  }, [hasModPowers, ytVideo]);
+
+  // Non-owner: request sync on join
+  useEffect(() => {
+    if (!joined || !channelRef.current || hasModPowers) return;
+    channelRef.current.publish("youtube-sync-request", {});
+  }, [joined, hasModPowers]);
 
   if (!room) {
     return (
@@ -617,15 +650,16 @@ export default function ChatPage() {
   };
 
   const handleYouTubeSubmit = (videoId: string) => {
-    const evt: YouTubeEvent = { videoId, isPlaying: true };
+    const evt: YouTubeEvent = { videoId, isPlaying: true, seekTime: 0, timestamp: Date.now() };
     setYtVideo(evt);
+    ytTimeRef.current = 0;
     if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(evt));
     channelRef.current?.publish("youtube", evt);
     setShowYouTubeInput(false);
   };
 
   const handleYouTubeToggle = () => {
-    const evt: YouTubeEvent = { ...ytVideo, isPlaying: !ytVideo.isPlaying };
+    const evt: YouTubeEvent = { ...ytVideo, isPlaying: !ytVideo.isPlaying, seekTime: ytTimeRef.current, timestamp: Date.now() };
     setYtVideo(evt);
     if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(evt));
     channelRef.current?.publish("youtube", evt);
@@ -634,14 +668,17 @@ export default function ChatPage() {
   const handleYouTubeClose = () => {
     const evt: YouTubeEvent = { videoId: null, isPlaying: false };
     setYtVideo(evt);
+    ytTimeRef.current = 0;
     if (room) localStorage.removeItem(`yt-state-${room}`);
     channelRef.current?.publish("youtube", evt);
     setShowYouTubeInput(false);
   };
 
   const handleYouTubeSeek = (time: number) => {
+    ytTimeRef.current = time;
     channelRef.current?.publish("youtube-seek", { time });
   };
+
 
   const renderMessage = (msg: ChatMessage) => {
     const isSelf = msg.sender === nickname;
@@ -1038,6 +1075,7 @@ export default function ChatPage() {
           onTogglePlay={hasModPowers ? handleYouTubeToggle : () => {}}
           onClose={hasModPowers ? handleYouTubeClose : () => {}}
           onSeek={hasModPowers ? handleYouTubeSeek : undefined}
+          onTimeUpdate={hasModPowers ? handleYouTubeTimeUpdate : undefined}
           seekTo={ytSeekTo}
           readOnly={!hasModPowers}
         />
