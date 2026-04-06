@@ -811,7 +811,9 @@ export default function ChatPage() {
               <Lock className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-xl font-semibold text-foreground">Sala: {room}</h1>
-            <p className="text-sm text-muted-foreground">Insira seu apelido e a senha da sala</p>
+            <p className="text-sm text-muted-foreground">
+              {isPublicRoom ? "Insira seu apelido para entrar" : "Insira seu apelido e a senha da sala"}
+            </p>
           </div>
           <div className="space-y-3">
             <Input
@@ -821,12 +823,14 @@ export default function ChatPage() {
               autoFocus
               maxLength={20}
             />
-            <Input
-              type="password"
-              placeholder="Senha da sala"
-              value={roomPassword}
-              onChange={(e) => setRoomPassword(e.target.value)}
-            />
+            {!isPublicRoom && (
+              <Input
+                type="password"
+                placeholder="Senha da sala"
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Mood selection - OBRIGATÓRIO - 3 em cima, 3 embaixo */}
