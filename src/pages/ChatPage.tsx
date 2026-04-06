@@ -200,25 +200,41 @@ export default function ChatPage() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
 
-  // Translate visible messages when language changes
+  const prevLangRef = useRef("");
+  
+  // Translate messages when language changes or new messages arrive
   useEffect(() => {
     if (!translateLang) {
       setTranslatedCache({});
+      prevLangRef.current = "";
       return;
     }
-    const translateAll = async () => {
-      const newCache: Record<string, string> = {};
-      for (const msg of messages) {
-        if (msg.system) continue;
+    // Clear cache when language changes
+    const langChanged = prevLangRef.current !== translateLang;
+    if (langChanged) {
+      setTranslatedCache({});
+      prevLangRef.current = translateLang;
+    }
+    const translateNew = async () => {
+      const currentCache = langChanged ? {} : translatedCache;
+      const toTranslate = messages.filter((msg) => {
+        if (msg.system) return false;
+        if (currentCache[msg.id]) return false;
         const decrypted = decryptMessage(msg.encrypted, ROOM_PASSWORD);
-        if (decrypted && decrypted !== msg.encrypted) {
+        return decrypted && decrypted !== msg.encrypted;
+      });
+      if (toTranslate.length === 0) return;
+      const newEntries: Record<string, string> = {};
+      await Promise.all(
+        toTranslate.map(async (msg) => {
+          const decrypted = decryptMessage(msg.encrypted, ROOM_PASSWORD);
           const translated = await translateText(decrypted, translateLang);
-          newCache[msg.id] = translated;
-        }
-      }
-      setTranslatedCache((prev) => ({ ...prev, ...newCache }));
+          newEntries[msg.id] = translated;
+        })
+      );
+      setTranslatedCache((prev) => ({ ...prev, ...newEntries }));
     };
-    translateAll();
+    translateNew();
   }, [translateLang, messages]);
 
   useEffect(() => {
