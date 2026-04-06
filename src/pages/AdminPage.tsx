@@ -118,14 +118,9 @@ export default function AdminPage() {
           <Shield className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-semibold text-foreground">Gerenciar Salas</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Início
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-1" /> Sair
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" onClick={handleLogout}>
+          <LogOut className="h-4 w-4 mr-1" /> Sair
+        </Button>
       </header>
 
       <main className="mx-auto w-full max-w-xl flex-1 space-y-6 p-6">
