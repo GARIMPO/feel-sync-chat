@@ -254,11 +254,15 @@ export default function ChatPage() {
       setYtSeekTo(time);
     });
     channel.subscribe("user-join", (msg: Ably.Message) => {
-      const data = msg.data as { nickname: string };
+      const data = msg.data as { nickname: string; mood?: string };
+      if (data.mood) {
+        setUserMoods((prev) => ({ ...prev, [data.nickname]: data.mood! }));
+      }
       updateMessages((prev) => [...prev, {
         id: crypto.randomUUID(), sender: "sistema",
         encrypted: encryptMessage(`${data.nickname} entrou na sala`, ROOM_PASSWORD),
         timestamp: Date.now(), system: true,
+        mood: data.mood,
       }]);
     });
     channel.subscribe("user-leave", (msg: Ably.Message) => {
