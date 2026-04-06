@@ -201,6 +201,7 @@ export default function ChatPage() {
     return { videoId: null, isPlaying: false };
   });
   const [ytSeekTo, setYtSeekTo] = useState<number | null>(null);
+  const [ytSeekId, setYtSeekId] = useState(0);
   const [translateLang, setTranslateLang] = useState("");
   const [translatedCache, setTranslatedCache] = useState<Record<string, string>>({});
   const channelRef = useRef<Ably.RealtimeChannel | null>(null);
@@ -324,18 +325,15 @@ export default function ChatPage() {
       const data = msg.data as YouTubeEvent;
       setYtVideo(data);
       if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(data));
-      // If event includes seekTime, apply it
       if (data.seekTime != null) {
         setYtSeekTo(data.seekTime);
+        setYtSeekId((prev) => prev + 1);
       }
     });
     channel.subscribe("youtube-seek", (msg: Ably.Message) => {
       const { time } = msg.data as { time: number };
       setYtSeekTo(time);
-    });
-    // Owner responds to sync requests from new joiners
-    channel.subscribe("youtube-sync-request", () => {
-      // This will be handled by the owner via an effect
+      setYtSeekId((prev) => prev + 1);
     });
     channel.subscribe("user-join", (msg: Ably.Message) => {
       const data = msg.data as { nickname: string; mood?: string };
@@ -1077,6 +1075,7 @@ export default function ChatPage() {
           onSeek={hasModPowers ? handleYouTubeSeek : undefined}
           onTimeUpdate={hasModPowers ? handleYouTubeTimeUpdate : undefined}
           seekTo={ytSeekTo}
+          seekId={ytSeekId}
           readOnly={!hasModPowers}
         />
       )}
