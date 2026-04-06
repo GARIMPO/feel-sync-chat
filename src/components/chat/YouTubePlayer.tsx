@@ -53,7 +53,7 @@ function loadYTApi(cb: () => void) {
 }
 
 export default function YouTubePlayer({
-  videoId, isPlaying, onSubmitLink, onTogglePlay, onClose, onSeek, seekTo,
+  videoId, isPlaying, onSubmitLink, onTogglePlay, onClose, onSeek, seekTo, readOnly,
 }: YouTubePlayerProps) {
   const [linkInput, setLinkInput] = useState("");
   const [minimized, setMinimized] = useState(false);
