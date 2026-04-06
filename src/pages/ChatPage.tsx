@@ -200,7 +200,28 @@ export default function ChatPage() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
 
+  // Translate visible messages when language changes
   useEffect(() => {
+    if (!translateLang) {
+      setTranslatedCache({});
+      return;
+    }
+    const translateAll = async () => {
+      const newCache: Record<string, string> = {};
+      for (const msg of messages) {
+        if (msg.system) continue;
+        const decrypted = decryptMessage(msg.encrypted, ROOM_PASSWORD);
+        if (decrypted && decrypted !== msg.encrypted) {
+          const translated = await translateText(decrypted, translateLang);
+          newCache[msg.id] = translated;
+        }
+      }
+      setTranslatedCache((prev) => ({ ...prev, ...newCache }));
+    };
+    translateAll();
+  }, [translateLang, messages]);
+
+
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
