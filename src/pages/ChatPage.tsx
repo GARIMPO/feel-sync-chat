@@ -733,7 +733,7 @@ export default function ChatPage() {
                 {time}
               </p>
               <div className="flex items-center gap-1">
-                {isAdmin && (
+                {hasModPowers && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <button
