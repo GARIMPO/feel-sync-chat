@@ -566,6 +566,7 @@ export default function ChatPage() {
             ) : (
               <LogOut className="h-3 w-3 text-red-400" />
             )}
+            {msg.mood && <span className="text-sm">{msg.mood}</span>}
             <span>{decrypted}</span>
             <span className="text-[10px] opacity-60">{time}</span>
           </div>
