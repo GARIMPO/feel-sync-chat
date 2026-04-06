@@ -339,8 +339,15 @@ export default function ChatPage() {
   const updateMessages = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
     setMessages((prev) => {
       const next = updater(prev);
-      if (room) saveMessages(room, next);
-      return next;
+      // Deduplicate by id
+      const seen = new Set<string>();
+      const deduped = next.filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+      if (room) saveMessages(room, deduped);
+      return deduped;
     });
   }, [room]);
 
