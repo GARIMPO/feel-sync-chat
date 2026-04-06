@@ -1022,6 +1022,42 @@ export default function ChatPage() {
               />
             )}
           </div>
+          <div className="border-l border-border h-6 mx-1" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant={translateLang ? "default" : "outline"}
+                size="sm"
+                className="h-8 gap-1 px-2 text-xs"
+                title="Tradutor"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {translateLang ? LANGUAGES.find(l => l.code === translateLang)?.label : "Traduzir"}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" side="top" align="start">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Traduzir mensagens para:</p>
+              <div className="space-y-0.5 max-h-52 overflow-y-auto">
+                {LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => setTranslateLang(lang.code)}
+                    className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                      translateLang === lang.code
+                        ? "bg-primary/15 text-foreground font-medium"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="flex gap-2 relative items-end">
