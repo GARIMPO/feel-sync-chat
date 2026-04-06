@@ -75,7 +75,6 @@ interface YouTubeEvent {
   videoId: string | null;
   isPlaying: boolean;
   seekTime?: number;
-  timestamp?: number;
 }
 
 const CHAT_FONT_SIZES: Record<string, string> = {
@@ -165,13 +164,12 @@ export default function ChatPage() {
   const room = searchParams.get("room");
   const isAdmin = searchParams.get("admin") === "true";
   const ownerParam = searchParams.get("owner") || "";
-  const isPublicParam = searchParams.get("public") === "true";
 
   const [nickname, setNickname] = useState("");
 
   // Check if current user is the room owner (creator)
   const publicRoom = room ? getPublicRoom(room) : undefined;
-  const isPublicRoom = isPublicParam || !!publicRoom;
+  const isPublicRoom = !!publicRoom;
   const isOwner = !!(publicRoom && nickname && publicRoom.creator === nickname) || !!(ownerParam && nickname && ownerParam === nickname);
   const hasModPowers = isAdmin || isOwner;
   const [roomPassword, setRoomPassword] = useState("");
@@ -201,7 +199,6 @@ export default function ChatPage() {
     return { videoId: null, isPlaying: false };
   });
   const [ytSeekTo, setYtSeekTo] = useState<number | null>(null);
-  const [ytSeekId, setYtSeekId] = useState(0);
   const [translateLang, setTranslateLang] = useState("");
   const [translatedCache, setTranslatedCache] = useState<Record<string, string>>({});
   const channelRef = useRef<Ably.RealtimeChannel | null>(null);
@@ -210,7 +207,6 @@ export default function ChatPage() {
   const nicknameRef = useRef("");
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
-  const ytTimeRef = useRef<number>(0);
 
   const prevLangRef = useRef("");
   
@@ -253,43 +249,19 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const setupPresenceAndTyping = useCallback((channel: Ably.RealtimeChannel, myNick: string, mood?: string | null) => {
+  const setupPresenceAndTyping = useCallback((channel: Ably.RealtimeChannel, myNick: string) => {
+    channel.presence.enter({ nickname: myNick });
+    
     const syncPresence = async () => {
       try {
         const members = await channel.presence.get();
-        const uniqueMembers = new Map<string, { nickname: string; mood?: string }>();
-
-        members.forEach((member) => {
-          const data = (member.data as { nickname?: string; mood?: string } | null) ?? null;
-          const memberName = data?.nickname || member.clientId;
-          if (!memberName) return;
-          uniqueMembers.set(memberName, { nickname: memberName, mood: data?.mood });
-        });
-
-        setOnlineUsers(Array.from(uniqueMembers.keys()));
-        setUserMoods((prev) => {
-          const next = { ...prev };
-          uniqueMembers.forEach((member) => {
-            if (member.mood) next[member.nickname] = member.mood;
-          });
-          return next;
-        });
+        const names: string[] = members.map((m) => (m.data as { nickname: string })?.nickname || m.clientId);
+        setOnlineUsers([...new Set(names)]);
       } catch {}
     };
-
-    void channel.presence.enter({ nickname: myNick, mood: mood || undefined })
-      .then(() => syncPresence())
-      .catch(() => syncPresence());
-
-    const handlePresenceChange = () => {
-      void syncPresence();
-    };
-
-    void syncPresence();
-    channel.presence.subscribe("enter", handlePresenceChange);
-    channel.presence.subscribe("leave", handlePresenceChange);
-    channel.presence.subscribe("update", handlePresenceChange);
-    channel.presence.subscribe("present", handlePresenceChange);
+    syncPresence();
+    channel.presence.subscribe("enter", syncPresence);
+    channel.presence.subscribe("leave", syncPresence);
 
     channel.subscribe("typing-start", (msg: Ably.Message) => {
       const data = msg.data as { nickname: string };
@@ -325,37 +297,25 @@ export default function ChatPage() {
       const data = msg.data as YouTubeEvent;
       setYtVideo(data);
       if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(data));
-      if (data.seekTime != null) {
-        setYtSeekTo(data.seekTime);
-        setYtSeekId((prev) => prev + 1);
-      }
     });
     channel.subscribe("youtube-seek", (msg: Ably.Message) => {
       const { time } = msg.data as { time: number };
       setYtSeekTo(time);
-      setYtSeekId((prev) => prev + 1);
     });
     channel.subscribe("user-join", (msg: Ably.Message) => {
       const data = msg.data as { nickname: string; mood?: string };
       if (data.mood) {
         setUserMoods((prev) => ({ ...prev, [data.nickname]: data.mood! }));
       }
-      setOnlineUsers((prev) => prev.includes(data.nickname) ? prev : [...prev, data.nickname]);
-      const joinText = data.mood ? `${data.nickname} ${data.mood} entrou na sala` : `${data.nickname} entrou na sala`;
       updateMessages((prev) => [...prev, {
         id: crypto.randomUUID(), sender: "sistema",
-        encrypted: encryptMessage(joinText, ROOM_PASSWORD),
+        encrypted: encryptMessage(`${data.nickname} entrou na sala`, ROOM_PASSWORD),
         timestamp: Date.now(), system: true,
+        mood: data.mood,
       }]);
     });
     channel.subscribe("user-leave", (msg: Ably.Message) => {
       const data = msg.data as { nickname: string };
-      setOnlineUsers((prev) => prev.filter((user) => user !== data.nickname));
-      setUserMoods((prev) => {
-        const next = { ...prev };
-        delete next[data.nickname];
-        return next;
-      });
       updateMessages((prev) => [...prev, {
         id: crypto.randomUUID(), sender: "sistema",
         encrypted: encryptMessage(`${data.nickname} saiu da sala`, ROOM_PASSWORD),
@@ -394,7 +354,6 @@ export default function ChatPage() {
       setMessages(stored);
       saveSession(room, session.nickname);
       nicknameRef.current = session.nickname;
-      setOnlineUsers((prev) => prev.includes(session.nickname) ? prev : [...prev, session.nickname]);
 
       const client = getAblyClient(session.nickname);
       const channel = client.channels.get(`chat-${room}`);
@@ -445,29 +404,6 @@ export default function ChatPage() {
     });
   }, [room]);
 
-  const handleYouTubeTimeUpdate = useCallback((time: number) => {
-    ytTimeRef.current = time;
-  }, []);
-
-  // Owner: respond to sync requests from new joiners
-  useEffect(() => {
-    if (!hasModPowers || !channelRef.current || !ytVideo.videoId) return;
-    const handler = () => {
-      const evt: YouTubeEvent = { ...ytVideo, seekTime: ytTimeRef.current, timestamp: Date.now() };
-      channelRef.current?.publish("youtube", evt);
-    };
-    channelRef.current.subscribe("youtube-sync-request", handler);
-    return () => {
-      channelRef.current?.unsubscribe("youtube-sync-request", handler);
-    };
-  }, [hasModPowers, ytVideo]);
-
-  // Non-owner: request sync on join
-  useEffect(() => {
-    if (!joined || !channelRef.current || hasModPowers) return;
-    channelRef.current.publish("youtube-sync-request", {});
-  }, [joined, hasModPowers]);
-
   if (!room) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -483,12 +419,12 @@ export default function ChatPage() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    const trimmedNickname = nickname.trim();
-    if (!trimmedNickname) return;
+    if (!nickname.trim()) return;
     if (!isPublicRoom && roomPassword !== ROOM_PASSWORD) {
       toast.error("Senha da sala incorreta!");
       return;
     }
+    // Public rooms use default password internally
     if (isPublicRoom) setRoomPassword(ROOM_PASSWORD);
     if (!myMood) {
       toast.error("Selecione seu humor para entrar!");
@@ -497,22 +433,21 @@ export default function ChatPage() {
 
     const stored = loadMessages(room);
     setMessages(stored);
-    saveSession(room, trimmedNickname);
-    nicknameRef.current = trimmedNickname;
-    setOnlineUsers((prev) => prev.includes(trimmedNickname) ? prev : [...prev, trimmedNickname]);
-    setUserMoods((prev) => ({ ...prev, [trimmedNickname]: myMood }));
+    saveSession(room, nickname.trim());
+    nicknameRef.current = nickname.trim();
 
-    const client = getAblyClient(trimmedNickname);
+    const client = getAblyClient(nickname.trim());
     const channel = client.channels.get(`chat-${room}`);
     channelRef.current = channel;
 
     subscribeAll(channel);
-    setupPresenceAndTyping(channel, trimmedNickname, myMood);
+    setupPresenceAndTyping(channel, nickname.trim());
 
-    channel.publish("user-join", { nickname: trimmedNickname, mood: myMood });
+    channel.publish("user-join", { nickname: nickname.trim(), mood: myMood });
 
     if (myMood) {
-      channel.publish("mood", { nickname: trimmedNickname, mood: myMood });
+      channel.publish("mood", { nickname: nickname.trim(), mood: myMood });
+      setUserMoods((prev) => ({ ...prev, [nickname.trim()]: myMood }));
     }
 
     const handleUnload = () => {
@@ -596,12 +531,9 @@ export default function ChatPage() {
   };
 
   const handleMoodChange = (emoji: string) => {
-    const trimmedNickname = nickname.trim();
     setMyMood(emoji);
-    if (!trimmedNickname) return;
-    setUserMoods((prev) => ({ ...prev, [trimmedNickname]: emoji }));
-    channelRef.current?.presence.update({ nickname: trimmedNickname, mood: emoji });
-    channelRef.current?.publish("mood", { nickname: trimmedNickname, mood: emoji });
+    setUserMoods((prev) => ({ ...prev, [nickname]: emoji }));
+    channelRef.current?.publish("mood", { nickname, mood: emoji });
   };
 
   const handleSendLetter = (to: string, text: string) => {
@@ -648,16 +580,15 @@ export default function ChatPage() {
   };
 
   const handleYouTubeSubmit = (videoId: string) => {
-    const evt: YouTubeEvent = { videoId, isPlaying: true, seekTime: 0, timestamp: Date.now() };
+    const evt: YouTubeEvent = { videoId, isPlaying: true };
     setYtVideo(evt);
-    ytTimeRef.current = 0;
     if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(evt));
     channelRef.current?.publish("youtube", evt);
     setShowYouTubeInput(false);
   };
 
   const handleYouTubeToggle = () => {
-    const evt: YouTubeEvent = { ...ytVideo, isPlaying: !ytVideo.isPlaying, seekTime: ytTimeRef.current, timestamp: Date.now() };
+    const evt: YouTubeEvent = { ...ytVideo, isPlaying: !ytVideo.isPlaying };
     setYtVideo(evt);
     if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(evt));
     channelRef.current?.publish("youtube", evt);
@@ -666,17 +597,14 @@ export default function ChatPage() {
   const handleYouTubeClose = () => {
     const evt: YouTubeEvent = { videoId: null, isPlaying: false };
     setYtVideo(evt);
-    ytTimeRef.current = 0;
     if (room) localStorage.removeItem(`yt-state-${room}`);
     channelRef.current?.publish("youtube", evt);
     setShowYouTubeInput(false);
   };
 
   const handleYouTubeSeek = (time: number) => {
-    ytTimeRef.current = time;
     channelRef.current?.publish("youtube-seek", { time });
   };
-
 
   const renderMessage = (msg: ChatMessage) => {
     const isSelf = msg.sender === nickname;
@@ -1073,9 +1001,7 @@ export default function ChatPage() {
           onTogglePlay={hasModPowers ? handleYouTubeToggle : () => {}}
           onClose={hasModPowers ? handleYouTubeClose : () => {}}
           onSeek={hasModPowers ? handleYouTubeSeek : undefined}
-          onTimeUpdate={hasModPowers ? handleYouTubeTimeUpdate : undefined}
           seekTo={ytSeekTo}
-          seekId={ytSeekId}
           readOnly={!hasModPowers}
         />
       )}
