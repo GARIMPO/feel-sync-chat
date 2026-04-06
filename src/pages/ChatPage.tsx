@@ -209,6 +209,7 @@ export default function ChatPage() {
   const nicknameRef = useRef("");
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const ytTimeRef = useRef<number>(0);
 
   const prevLangRef = useRef("");
   
