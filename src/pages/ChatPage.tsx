@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Send, Lock, ArrowLeft, Trash2, Pencil, Music, LogIn, LogOut, DoorOpen, Users, Mail } from "lucide-react";
+import { Send, Lock, ArrowLeft, Trash2, Pencil, Music, LogIn, LogOut, DoorOpen, Users, Mail, Globe } from "lucide-react";
 import { toast } from "sonner";
 import type Ably from "ably";
 import GifPicker from "@/components/chat/GifPicker";
@@ -25,6 +25,7 @@ import YouTubePlayer from "@/components/chat/YouTubePlayer";
 import MoodPicker from "@/components/chat/MoodPicker";
 import LetterComposer from "@/components/chat/LetterComposer";
 import parchmentBg from "@/assets/parchment.png";
+import { translateText, LANGUAGES } from "@/lib/translate";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,7 @@ interface ChatMessage {
 interface EmotionEvent {
   emoji: string;
   id: string;
+  nickname?: string;
 }
 
 interface YouTubeEvent {
@@ -189,12 +191,35 @@ export default function ChatPage() {
     return { videoId: null, isPlaying: false };
   });
   const [ytSeekTo, setYtSeekTo] = useState<number | null>(null);
+  const [translateLang, setTranslateLang] = useState("");
+  const [translatedCache, setTranslatedCache] = useState<Record<string, string>>({});
   const channelRef = useRef<Ably.RealtimeChannel | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activityInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const nicknameRef = useRef("");
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+
+  // Translate visible messages when language changes
+  useEffect(() => {
+    if (!translateLang) {
+      setTranslatedCache({});
+      return;
+    }
+    const translateAll = async () => {
+      const newCache: Record<string, string> = {};
+      for (const msg of messages) {
+        if (msg.system) continue;
+        const decrypted = decryptMessage(msg.encrypted, ROOM_PASSWORD);
+        if (decrypted && decrypted !== msg.encrypted) {
+          const translated = await translateText(decrypted, translateLang);
+          newCache[msg.id] = translated;
+        }
+      }
+      setTranslatedCache((prev) => ({ ...prev, ...newCache }));
+    };
+    translateAll();
+  }, [translateLang, messages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -421,7 +446,7 @@ export default function ChatPage() {
     }, 2000);
   };
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !channelRef.current) return;
 
@@ -429,7 +454,12 @@ export default function ChatPage() {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     channelRef.current.publish("typing-stop", { nickname });
 
-    const encrypted = encryptMessage(input.trim(), ROOM_PASSWORD);
+    let textToSend = input.trim();
+    if (translateLang) {
+      textToSend = await translateText(textToSend, translateLang);
+    }
+
+    const encrypted = encryptMessage(textToSend, ROOM_PASSWORD);
     const msg: ChatMessage = {
       id: crypto.randomUUID(),
       sender: nickname,
@@ -458,7 +488,7 @@ export default function ChatPage() {
 
   const handleSendEmotion = (emoji: string) => {
     if (!channelRef.current) return;
-    channelRef.current.publish("emotion", { emoji, id: crypto.randomUUID() });
+    channelRef.current.publish("emotion", { emoji, id: crypto.randomUUID(), nickname });
   };
 
   const handleSendDrawing = (dataUrl: string) => {
@@ -553,6 +583,7 @@ export default function ChatPage() {
   const renderMessage = (msg: ChatMessage) => {
     const isSelf = msg.sender === nickname;
     const decrypted = decryptMessage(msg.encrypted, ROOM_PASSWORD);
+    const displayText = (translateLang && translatedCache[msg.id]) ? translatedCache[msg.id] : decrypted;
     const isEncrypted = decrypted === msg.encrypted;
     const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const displayFontSize = CHAT_FONT_SIZES[chatFontSize] || "text-base";
@@ -670,7 +701,7 @@ export default function ChatPage() {
                 }}
               >
                 {isEncrypted && <Lock className="inline h-3 w-3 mr-1 -mt-0.5" />}
-                {linkify(decrypted)}
+                {linkify(displayText)}
               </p>
             )}
 
@@ -1013,6 +1044,42 @@ export default function ChatPage() {
               />
             )}
           </div>
+          <div className="border-l border-border h-6 mx-1" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant={translateLang ? "default" : "outline"}
+                size="sm"
+                className="h-8 gap-1 px-2 text-xs"
+                title="Tradutor"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {translateLang ? LANGUAGES.find(l => l.code === translateLang)?.label : "Traduzir"}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" side="top" align="start">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Traduzir mensagens para:</p>
+              <div className="space-y-0.5 max-h-52 overflow-y-auto">
+                {LANGUAGES.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => setTranslateLang(lang.code)}
+                    className={`w-full text-left text-sm px-2 py-1.5 rounded transition-colors ${
+                      translateLang === lang.code
+                        ? "bg-primary/15 text-foreground font-medium"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="flex gap-2 relative items-end">
