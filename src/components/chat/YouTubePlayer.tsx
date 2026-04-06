@@ -177,6 +177,9 @@ export default function YouTubePlayer({
           <div className="w-full sm:max-w-[50%] lg:max-w-[40%]">
             <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
               <div ref={containerRef} className="absolute inset-0 w-full h-full [&>iframe]:w-full [&>iframe]:h-full" />
+              {readOnly && (
+                <div className="absolute inset-0 z-10" style={{ cursor: "default" }} />
+              )}
             </div>
           </div>
         </div>
