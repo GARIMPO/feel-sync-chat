@@ -50,7 +50,7 @@ export default function Index() {
     setShowCreate(false);
     setRoomName("");
     // Navigate as owner
-    navigate(`/chat?room=${encodeURIComponent(roomName.trim())}&owner=${encodeURIComponent(creatorName.trim())}`);
+    navigate(`/chat?room=${encodeURIComponent(roomName.trim())}&owner=${encodeURIComponent(creatorName.trim())}&public=true`);
   };
 
   const handleDeleteRoom = (room: PublicRoom) => {
@@ -60,7 +60,7 @@ export default function Index() {
   };
 
   const copyLink = (roomName: string) => {
-    const url = `${window.location.origin}/chat?room=${encodeURIComponent(roomName)}`;
+    const url = `${window.location.origin}/chat?room=${encodeURIComponent(roomName)}&public=true`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
@@ -119,7 +119,7 @@ export default function Index() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => navigate(`/chat?room=${encodeURIComponent(room.name)}`)}
+                    onClick={() => navigate(`/chat?room=${encodeURIComponent(room.name)}&public=true`)}
                     title="Entrar"
                   >
                     <DoorOpen className="h-4 w-4 text-primary" />
