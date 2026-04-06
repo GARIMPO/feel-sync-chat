@@ -83,7 +83,7 @@ const CHAT_FONT_SIZES: Record<string, string> = {
 };
 
 const ROOM_PASSWORD = "entrar2025";
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000;
+const INACTIVITY_TIMEOUT = 120 * 60 * 1000;
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
@@ -254,11 +254,15 @@ export default function ChatPage() {
       setYtSeekTo(time);
     });
     channel.subscribe("user-join", (msg: Ably.Message) => {
-      const data = msg.data as { nickname: string };
+      const data = msg.data as { nickname: string; mood?: string };
+      if (data.mood) {
+        setUserMoods((prev) => ({ ...prev, [data.nickname]: data.mood! }));
+      }
       updateMessages((prev) => [...prev, {
         id: crypto.randomUUID(), sender: "sistema",
         encrypted: encryptMessage(`${data.nickname} entrou na sala`, ROOM_PASSWORD),
         timestamp: Date.now(), system: true,
+        mood: data.mood,
       }]);
     });
     channel.subscribe("user-leave", (msg: Ably.Message) => {
@@ -339,8 +343,15 @@ export default function ChatPage() {
   const updateMessages = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
     setMessages((prev) => {
       const next = updater(prev);
-      if (room) saveMessages(room, next);
-      return next;
+      // Deduplicate by id
+      const seen = new Set<string>();
+      const deduped = next.filter((m) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      });
+      if (room) saveMessages(room, deduped);
+      return deduped;
     });
   }, [room]);
 
@@ -381,7 +392,7 @@ export default function ChatPage() {
     subscribeAll(channel);
     setupPresenceAndTyping(channel, nickname.trim());
 
-    channel.publish("user-join", { nickname: nickname.trim() });
+    channel.publish("user-join", { nickname: nickname.trim(), mood: myMood });
 
     if (myMood) {
       channel.publish("mood", { nickname: nickname.trim(), mood: myMood });
@@ -555,6 +566,7 @@ export default function ChatPage() {
             ) : (
               <LogOut className="h-3 w-3 text-red-400" />
             )}
+            {msg.mood && <span className="text-sm">{msg.mood}</span>}
             <span>{decrypted}</span>
             <span className="text-[10px] opacity-60">{time}</span>
           </div>
