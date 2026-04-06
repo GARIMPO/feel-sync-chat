@@ -119,7 +119,7 @@ export default function Index() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => navigate(`/chat?room=${encodeURIComponent(room.name)}`)}
+                    onClick={() => navigate(`/chat?room=${encodeURIComponent(room.name)}&public=true`)}
                     title="Entrar"
                   >
                     <DoorOpen className="h-4 w-4 text-primary" />
