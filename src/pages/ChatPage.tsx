@@ -250,19 +250,43 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const setupPresenceAndTyping = useCallback((channel: Ably.RealtimeChannel, myNick: string) => {
-    channel.presence.enter({ nickname: myNick });
-    
+  const setupPresenceAndTyping = useCallback((channel: Ably.RealtimeChannel, myNick: string, mood?: string | null) => {
     const syncPresence = async () => {
       try {
         const members = await channel.presence.get();
-        const names: string[] = members.map((m) => (m.data as { nickname: string })?.nickname || m.clientId);
-        setOnlineUsers([...new Set(names)]);
+        const uniqueMembers = new Map<string, { nickname: string; mood?: string }>();
+
+        members.forEach((member) => {
+          const data = (member.data as { nickname?: string; mood?: string } | null) ?? null;
+          const memberName = data?.nickname || member.clientId;
+          if (!memberName) return;
+          uniqueMembers.set(memberName, { nickname: memberName, mood: data?.mood });
+        });
+
+        setOnlineUsers(Array.from(uniqueMembers.keys()));
+        setUserMoods((prev) => {
+          const next = { ...prev };
+          uniqueMembers.forEach((member) => {
+            if (member.mood) next[member.nickname] = member.mood;
+          });
+          return next;
+        });
       } catch {}
     };
-    syncPresence();
-    channel.presence.subscribe("enter", syncPresence);
-    channel.presence.subscribe("leave", syncPresence);
+
+    void channel.presence.enter({ nickname: myNick, mood: mood || undefined })
+      .then(() => syncPresence())
+      .catch(() => syncPresence());
+
+    const handlePresenceChange = () => {
+      void syncPresence();
+    };
+
+    void syncPresence();
+    channel.presence.subscribe("enter", handlePresenceChange);
+    channel.presence.subscribe("leave", handlePresenceChange);
+    channel.presence.subscribe("update", handlePresenceChange);
+    channel.presence.subscribe("present", handlePresenceChange);
 
     channel.subscribe("typing-start", (msg: Ably.Message) => {
       const data = msg.data as { nickname: string };
@@ -308,15 +332,22 @@ export default function ChatPage() {
       if (data.mood) {
         setUserMoods((prev) => ({ ...prev, [data.nickname]: data.mood! }));
       }
+      setOnlineUsers((prev) => prev.includes(data.nickname) ? prev : [...prev, data.nickname]);
+      const joinText = data.mood ? `${data.nickname} ${data.mood} entrou na sala` : `${data.nickname} entrou na sala`;
       updateMessages((prev) => [...prev, {
         id: crypto.randomUUID(), sender: "sistema",
-        encrypted: encryptMessage(`${data.nickname} entrou na sala`, ROOM_PASSWORD),
+        encrypted: encryptMessage(joinText, ROOM_PASSWORD),
         timestamp: Date.now(), system: true,
-        mood: data.mood,
       }]);
     });
     channel.subscribe("user-leave", (msg: Ably.Message) => {
       const data = msg.data as { nickname: string };
+      setOnlineUsers((prev) => prev.filter((user) => user !== data.nickname));
+      setUserMoods((prev) => {
+        const next = { ...prev };
+        delete next[data.nickname];
+        return next;
+      });
       updateMessages((prev) => [...prev, {
         id: crypto.randomUUID(), sender: "sistema",
         encrypted: encryptMessage(`${data.nickname} saiu da sala`, ROOM_PASSWORD),
@@ -355,6 +386,7 @@ export default function ChatPage() {
       setMessages(stored);
       saveSession(room, session.nickname);
       nicknameRef.current = session.nickname;
+      setOnlineUsers((prev) => prev.includes(session.nickname) ? prev : [...prev, session.nickname]);
 
       const client = getAblyClient(session.nickname);
       const channel = client.channels.get(`chat-${room}`);
@@ -420,12 +452,12 @@ export default function ChatPage() {
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nickname.trim()) return;
+    const trimmedNickname = nickname.trim();
+    if (!trimmedNickname) return;
     if (!isPublicRoom && roomPassword !== ROOM_PASSWORD) {
       toast.error("Senha da sala incorreta!");
       return;
     }
-    // Public rooms use default password internally
     if (isPublicRoom) setRoomPassword(ROOM_PASSWORD);
     if (!myMood) {
       toast.error("Selecione seu humor para entrar!");
@@ -434,21 +466,22 @@ export default function ChatPage() {
 
     const stored = loadMessages(room);
     setMessages(stored);
-    saveSession(room, nickname.trim());
-    nicknameRef.current = nickname.trim();
+    saveSession(room, trimmedNickname);
+    nicknameRef.current = trimmedNickname;
+    setOnlineUsers((prev) => prev.includes(trimmedNickname) ? prev : [...prev, trimmedNickname]);
+    setUserMoods((prev) => ({ ...prev, [trimmedNickname]: myMood }));
 
-    const client = getAblyClient(nickname.trim());
+    const client = getAblyClient(trimmedNickname);
     const channel = client.channels.get(`chat-${room}`);
     channelRef.current = channel;
 
     subscribeAll(channel);
-    setupPresenceAndTyping(channel, nickname.trim());
+    setupPresenceAndTyping(channel, trimmedNickname, myMood);
 
-    channel.publish("user-join", { nickname: nickname.trim(), mood: myMood });
+    channel.publish("user-join", { nickname: trimmedNickname, mood: myMood });
 
     if (myMood) {
-      channel.publish("mood", { nickname: nickname.trim(), mood: myMood });
-      setUserMoods((prev) => ({ ...prev, [nickname.trim()]: myMood }));
+      channel.publish("mood", { nickname: trimmedNickname, mood: myMood });
     }
 
     const handleUnload = () => {
@@ -532,9 +565,12 @@ export default function ChatPage() {
   };
 
   const handleMoodChange = (emoji: string) => {
+    const trimmedNickname = nickname.trim();
     setMyMood(emoji);
-    setUserMoods((prev) => ({ ...prev, [nickname]: emoji }));
-    channelRef.current?.publish("mood", { nickname, mood: emoji });
+    if (!trimmedNickname) return;
+    setUserMoods((prev) => ({ ...prev, [trimmedNickname]: emoji }));
+    channelRef.current?.presence.update({ nickname: trimmedNickname, mood: emoji });
+    channelRef.current?.publish("mood", { nickname: trimmedNickname, mood: emoji });
   };
 
   const handleSendLetter = (to: string, text: string) => {
