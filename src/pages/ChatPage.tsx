@@ -420,10 +420,12 @@ export default function ChatPage() {
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim()) return;
-    if (roomPassword !== ROOM_PASSWORD) {
+    if (!isPublicRoom && roomPassword !== ROOM_PASSWORD) {
       toast.error("Senha da sala incorreta!");
       return;
     }
+    // Public rooms use default password internally
+    if (isPublicRoom) setRoomPassword(ROOM_PASSWORD);
     if (!myMood) {
       toast.error("Selecione seu humor para entrar!");
       return;
