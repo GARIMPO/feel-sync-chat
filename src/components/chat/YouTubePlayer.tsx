@@ -18,6 +18,7 @@ interface YouTubePlayerProps {
   onClose: () => void;
   onSeek?: (time: number) => void;
   seekTo?: number | null;
+  readOnly?: boolean;
 }
 
 function extractVideoId(url: string): string | null {
@@ -52,7 +53,7 @@ function loadYTApi(cb: () => void) {
 }
 
 export default function YouTubePlayer({
-  videoId, isPlaying, onSubmitLink, onTogglePlay, onClose, onSeek, seekTo,
+  videoId, isPlaying, onSubmitLink, onTogglePlay, onClose, onSeek, seekTo, readOnly,
 }: YouTubePlayerProps) {
   const [linkInput, setLinkInput] = useState("");
   const [minimized, setMinimized] = useState(false);
@@ -125,6 +126,7 @@ export default function YouTubePlayer({
   };
 
   if (!videoId) {
+    if (readOnly) return null;
     return (
       <div className="border-b border-border bg-surface px-3 py-2">
         <div className="flex items-center gap-2">
@@ -153,12 +155,21 @@ export default function YouTubePlayer({
           <span className="text-xs text-muted-foreground font-medium">Assistindo juntos</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMinimized(!minimized)}>
-            {minimized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="h-3.5 w-3.5 text-destructive" />
-          </Button>
+          {!readOnly && (
+            <>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMinimized(!minimized)}>
+                {minimized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+                <X className="h-3.5 w-3.5 text-destructive" />
+              </Button>
+            </>
+          )}
+          {readOnly && (
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMinimized(!minimized)}>
+              {minimized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            </Button>
+          )}
         </div>
       </div>
       {!minimized && (

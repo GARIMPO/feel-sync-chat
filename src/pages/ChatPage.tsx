@@ -169,6 +169,7 @@ export default function ChatPage() {
 
   // Check if current user is the room owner (creator)
   const publicRoom = room ? getPublicRoom(room) : undefined;
+  const isPublicRoom = !!publicRoom;
   const isOwner = !!(publicRoom && nickname && publicRoom.creator === nickname) || !!(ownerParam && nickname && ownerParam === nickname);
   const hasModPowers = isAdmin || isOwner;
   const [roomPassword, setRoomPassword] = useState("");
@@ -419,10 +420,12 @@ export default function ChatPage() {
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nickname.trim()) return;
-    if (roomPassword !== ROOM_PASSWORD) {
+    if (!isPublicRoom && roomPassword !== ROOM_PASSWORD) {
       toast.error("Senha da sala incorreta!");
       return;
     }
+    // Public rooms use default password internally
+    if (isPublicRoom) setRoomPassword(ROOM_PASSWORD);
     if (!myMood) {
       toast.error("Selecione seu humor para entrar!");
       return;
@@ -808,7 +811,9 @@ export default function ChatPage() {
               <Lock className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-xl font-semibold text-foreground">Sala: {room}</h1>
-            <p className="text-sm text-muted-foreground">Insira seu apelido e a senha da sala</p>
+            <p className="text-sm text-muted-foreground">
+              {isPublicRoom ? "Insira seu apelido para entrar" : "Insira seu apelido e a senha da sala"}
+            </p>
           </div>
           <div className="space-y-3">
             <Input
@@ -818,12 +823,14 @@ export default function ChatPage() {
               autoFocus
               maxLength={20}
             />
-            <Input
-              type="password"
-              placeholder="Senha da sala"
-              value={roomPassword}
-              onChange={(e) => setRoomPassword(e.target.value)}
-            />
+            {!isPublicRoom && (
+              <Input
+                type="password"
+                placeholder="Senha da sala"
+                value={roomPassword}
+                onChange={(e) => setRoomPassword(e.target.value)}
+              />
+            )}
           </div>
 
           {/* Mood selection - OBRIGATÓRIO - 3 em cima, 3 embaixo */}
@@ -990,11 +997,12 @@ export default function ChatPage() {
         <YouTubePlayer
           videoId={ytVideo.videoId}
           isPlaying={ytVideo.isPlaying}
-          onSubmitLink={handleYouTubeSubmit}
-          onTogglePlay={handleYouTubeToggle}
-          onClose={handleYouTubeClose}
-          onSeek={handleYouTubeSeek}
+          onSubmitLink={hasModPowers ? handleYouTubeSubmit : () => {}}
+          onTogglePlay={hasModPowers ? handleYouTubeToggle : () => {}}
+          onClose={hasModPowers ? handleYouTubeClose : () => {}}
+          onSeek={hasModPowers ? handleYouTubeSeek : undefined}
           seekTo={ytSeekTo}
+          readOnly={!hasModPowers}
         />
       )}
 
