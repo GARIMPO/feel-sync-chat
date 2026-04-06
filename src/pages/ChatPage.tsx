@@ -701,7 +701,7 @@ export default function ChatPage() {
                 }}
               >
                 {isEncrypted && <Lock className="inline h-3 w-3 mr-1 -mt-0.5" />}
-                {linkify(decrypted)}
+                {linkify(displayText)}
               </p>
             )}
 
