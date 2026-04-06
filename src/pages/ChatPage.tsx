@@ -75,6 +75,7 @@ interface YouTubeEvent {
   videoId: string | null;
   isPlaying: boolean;
   seekTime?: number;
+  timestamp?: number;
 }
 
 const CHAT_FONT_SIZES: Record<string, string> = {
