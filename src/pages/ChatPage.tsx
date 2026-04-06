@@ -690,7 +690,7 @@ export default function ChatPage() {
               <p className="text-sm font-bold mb-0.5 text-primary flex items-center gap-1">
                 {msg.sender}
                 {msg.mood && (
-                  <span className="text-lg animate-mood-bounce inline-block">{msg.mood}</span>
+                  <span className="text-lg inline-block">{msg.mood}</span>
                 )}
               </p>
             )}
@@ -698,7 +698,7 @@ export default function ChatPage() {
               <p className="text-sm font-bold mb-0.5 text-chat-self-foreground/80 flex items-center gap-1 justify-end">
                 {nickname}
                 {msg.mood && (
-                  <span className="text-lg animate-mood-bounce inline-block">{msg.mood}</span>
+                  <span className="text-lg inline-block">{msg.mood}</span>
                 )}
               </p>
             )}
