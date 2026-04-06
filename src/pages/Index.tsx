@@ -50,7 +50,7 @@ export default function Index() {
     setShowCreate(false);
     setRoomName("");
     // Navigate as owner
-    navigate(`/chat?room=${encodeURIComponent(roomName.trim())}&owner=${encodeURIComponent(creatorName.trim())}`);
+    navigate(`/chat?room=${encodeURIComponent(roomName.trim())}&owner=${encodeURIComponent(creatorName.trim())}&public=true`);
   };
 
   const handleDeleteRoom = (room: PublicRoom) => {
