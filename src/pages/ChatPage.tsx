@@ -627,15 +627,16 @@ export default function ChatPage() {
   };
 
   const handleYouTubeSubmit = (videoId: string) => {
-    const evt: YouTubeEvent = { videoId, isPlaying: true };
+    const evt: YouTubeEvent = { videoId, isPlaying: true, seekTime: 0, timestamp: Date.now() };
     setYtVideo(evt);
+    ytTimeRef.current = 0;
     if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(evt));
     channelRef.current?.publish("youtube", evt);
     setShowYouTubeInput(false);
   };
 
   const handleYouTubeToggle = () => {
-    const evt: YouTubeEvent = { ...ytVideo, isPlaying: !ytVideo.isPlaying };
+    const evt: YouTubeEvent = { ...ytVideo, isPlaying: !ytVideo.isPlaying, seekTime: ytTimeRef.current, timestamp: Date.now() };
     setYtVideo(evt);
     if (room) localStorage.setItem(`yt-state-${room}`, JSON.stringify(evt));
     channelRef.current?.publish("youtube", evt);
@@ -644,14 +645,40 @@ export default function ChatPage() {
   const handleYouTubeClose = () => {
     const evt: YouTubeEvent = { videoId: null, isPlaying: false };
     setYtVideo(evt);
+    ytTimeRef.current = 0;
     if (room) localStorage.removeItem(`yt-state-${room}`);
     channelRef.current?.publish("youtube", evt);
     setShowYouTubeInput(false);
   };
 
   const handleYouTubeSeek = (time: number) => {
+    ytTimeRef.current = time;
     channelRef.current?.publish("youtube-seek", { time });
   };
+
+  const handleYouTubeTimeUpdate = useCallback((time: number) => {
+    ytTimeRef.current = time;
+  }, []);
+
+  // Owner: respond to sync requests from new joiners
+  useEffect(() => {
+    if (!hasModPowers || !channelRef.current || !ytVideo.videoId) return;
+    const handler = () => {
+      const evt: YouTubeEvent = { ...ytVideo, seekTime: ytTimeRef.current, timestamp: Date.now() };
+      channelRef.current?.publish("youtube", evt);
+    };
+    channelRef.current.subscribe("youtube-sync-request", handler);
+    return () => {
+      channelRef.current?.unsubscribe("youtube-sync-request", handler);
+    };
+  }, [hasModPowers, ytVideo]);
+
+  // Non-owner: request sync on join
+  useEffect(() => {
+    if (!joined || !channelRef.current || hasModPowers) return;
+    // Request current YouTube state from owner
+    channelRef.current.publish("youtube-sync-request", {});
+  }, [joined, hasModPowers]);
 
   const renderMessage = (msg: ChatMessage) => {
     const isSelf = msg.sender === nickname;
