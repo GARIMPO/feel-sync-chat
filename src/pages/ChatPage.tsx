@@ -995,11 +995,12 @@ export default function ChatPage() {
         <YouTubePlayer
           videoId={ytVideo.videoId}
           isPlaying={ytVideo.isPlaying}
-          onSubmitLink={handleYouTubeSubmit}
-          onTogglePlay={handleYouTubeToggle}
-          onClose={handleYouTubeClose}
-          onSeek={handleYouTubeSeek}
+          onSubmitLink={hasModPowers ? handleYouTubeSubmit : () => {}}
+          onTogglePlay={hasModPowers ? handleYouTubeToggle : () => {}}
+          onClose={hasModPowers ? handleYouTubeClose : () => {}}
+          onSeek={hasModPowers ? handleYouTubeSeek : undefined}
           seekTo={ytSeekTo}
+          readOnly={!hasModPowers}
         />
       )}
 
