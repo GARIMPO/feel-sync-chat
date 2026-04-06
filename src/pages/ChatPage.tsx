@@ -660,26 +660,6 @@ export default function ChatPage() {
     ytTimeRef.current = time;
   }, []);
 
-  // Owner: respond to sync requests from new joiners
-  useEffect(() => {
-    if (!hasModPowers || !channelRef.current || !ytVideo.videoId) return;
-    const handler = () => {
-      const evt: YouTubeEvent = { ...ytVideo, seekTime: ytTimeRef.current, timestamp: Date.now() };
-      channelRef.current?.publish("youtube", evt);
-    };
-    channelRef.current.subscribe("youtube-sync-request", handler);
-    return () => {
-      channelRef.current?.unsubscribe("youtube-sync-request", handler);
-    };
-  }, [hasModPowers, ytVideo]);
-
-  // Non-owner: request sync on join
-  useEffect(() => {
-    if (!joined || !channelRef.current || hasModPowers) return;
-    // Request current YouTube state from owner
-    channelRef.current.publish("youtube-sync-request", {});
-  }, [joined, hasModPowers]);
-
   const renderMessage = (msg: ChatMessage) => {
     const isSelf = msg.sender === nickname;
     const decrypted = decryptMessage(msg.encrypted, ROOM_PASSWORD);
