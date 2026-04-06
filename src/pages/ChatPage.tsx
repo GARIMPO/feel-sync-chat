@@ -25,6 +25,7 @@ import YouTubePlayer from "@/components/chat/YouTubePlayer";
 import MoodPicker from "@/components/chat/MoodPicker";
 import LetterComposer from "@/components/chat/LetterComposer";
 import parchmentBg from "@/assets/parchment.png";
+import { translateText, LANGUAGES } from "@/lib/translate";
 import {
   Dialog,
   DialogContent,
