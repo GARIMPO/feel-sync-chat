@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { setRoomPassword, getAllRoomPasswords, deleteRoomPassword } from "@/store/roomPasswords";
-import { Shield, Plus, Trash2, Copy, LogOut, MessageCircle } from "lucide-react";
+import { Shield, Plus, Trash2, Copy, LogOut, MessageCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -118,9 +118,14 @@ export default function AdminPage() {
           <Shield className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-semibold text-foreground">Gerenciar Salas</h1>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          <LogOut className="h-4 w-4 mr-1" /> Sair
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Início
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-1" /> Sair
+          </Button>
+        </div>
       </header>
 
       <main className="mx-auto w-full max-w-xl flex-1 space-y-6 p-6">
