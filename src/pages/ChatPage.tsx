@@ -583,6 +583,7 @@ export default function ChatPage() {
   const renderMessage = (msg: ChatMessage) => {
     const isSelf = msg.sender === nickname;
     const decrypted = decryptMessage(msg.encrypted, ROOM_PASSWORD);
+    const displayText = (translateLang && translatedCache[msg.id]) ? translatedCache[msg.id] : decrypted;
     const isEncrypted = decrypted === msg.encrypted;
     const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const displayFontSize = CHAT_FONT_SIZES[chatFontSize] || "text-base";
