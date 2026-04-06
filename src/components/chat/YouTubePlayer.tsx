@@ -18,6 +18,7 @@ interface YouTubePlayerProps {
   onClose: () => void;
   onSeek?: (time: number) => void;
   seekTo?: number | null;
+  readOnly?: boolean;
 }
 
 function extractVideoId(url: string): string | null {
