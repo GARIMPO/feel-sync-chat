@@ -425,7 +425,7 @@ export default function ChatPage() {
     }, 2000);
   };
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !channelRef.current) return;
 
@@ -433,7 +433,12 @@ export default function ChatPage() {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     channelRef.current.publish("typing-stop", { nickname });
 
-    const encrypted = encryptMessage(input.trim(), ROOM_PASSWORD);
+    let textToSend = input.trim();
+    if (translateLang) {
+      textToSend = await translateText(textToSend, translateLang);
+    }
+
+    const encrypted = encryptMessage(textToSend, ROOM_PASSWORD);
     const msg: ChatMessage = {
       id: crypto.randomUUID(),
       sender: nickname,
