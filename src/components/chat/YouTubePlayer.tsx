@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Music, X, Send, ChevronDown, ChevronUp } from "lucide-react";
@@ -19,6 +19,7 @@ interface YouTubePlayerProps {
   onSeek?: (time: number) => void;
   onTimeUpdate?: (time: number) => void;
   seekTo?: number | null;
+  seekId?: number;
   readOnly?: boolean;
 }
 
@@ -54,7 +55,7 @@ function loadYTApi(cb: () => void) {
 }
 
 export default function YouTubePlayer({
-  videoId, isPlaying, onSubmitLink, onTogglePlay, onClose, onSeek, onTimeUpdate, seekTo, readOnly,
+  videoId, isPlaying, onSubmitLink, onTogglePlay, onClose, onSeek, onTimeUpdate, seekTo, seekId, readOnly,
 }: YouTubePlayerProps) {
   const [linkInput, setLinkInput] = useState("");
   const [minimized, setMinimized] = useState(false);
@@ -63,6 +64,14 @@ export default function YouTubePlayer({
   const lastSeekRef = useRef<number>(0);
   const ignoreSeekRef = useRef(false);
   const playerReadyRef = useRef(false);
+  const pendingSeekRef = useRef<number | null>(null);
+  const lastAppliedSeekIdRef = useRef<number>(-1);
+  const isPlayingRef = useRef(isPlaying);
+
+  // Keep isPlayingRef in sync
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   // Build / destroy player when videoId or minimized changes
   useEffect(() => {
@@ -85,15 +94,30 @@ export default function YouTubePlayer({
         events: {
           onReady: () => {
             playerReadyRef.current = true;
+            // Apply pending seek if any (for users joining mid-video)
+            if (pendingSeekRef.current != null) {
+              playerRef.current.seekTo(pendingSeekRef.current, true);
+              lastSeekRef.current = pendingSeekRef.current;
+              pendingSeekRef.current = null;
+            }
+            // Sync play/pause state
+            if (!isPlayingRef.current) {
+              playerRef.current.pauseVideo();
+            }
           },
           onStateChange: (event: any) => {
-            if (readOnly) return; // only owner fires seek/state events
+            if (readOnly) return;
             if (event.data === window.YT.PlayerState.PLAYING || event.data === window.YT.PlayerState.PAUSED) {
               const currentTime = playerRef.current?.getCurrentTime?.() || 0;
               if (Math.abs(currentTime - lastSeekRef.current) > 3 && !ignoreSeekRef.current) {
                 onSeek?.(currentTime);
               }
               lastSeekRef.current = currentTime;
+              // Publish play/pause changes from owner
+              const nowPlaying = event.data === window.YT.PlayerState.PLAYING;
+              if (nowPlaying !== isPlayingRef.current) {
+                onTogglePlay();
+              }
             }
           },
         },
@@ -135,7 +159,7 @@ export default function YouTubePlayer({
     } catch {}
   }, [isPlaying]);
 
-  // Also poll to enforce play/pause for readOnly (YT API ready timing)
+  // Poll to enforce play/pause for readOnly (YT API ready timing)
   useEffect(() => {
     if (!readOnly || !videoId || minimized) return;
     const interval = setInterval(() => {
@@ -153,15 +177,22 @@ export default function YouTubePlayer({
     return () => clearInterval(interval);
   }, [readOnly, isPlaying, videoId, minimized]);
 
-  // Handle seekTo from owner
+  // Handle seekTo from owner - uses seekId to allow re-triggering same time value
   useEffect(() => {
-    if (seekTo != null && playerRef.current?.seekTo) {
+    if (seekTo == null || seekId == null) return;
+    if (seekId === lastAppliedSeekIdRef.current) return;
+    lastAppliedSeekIdRef.current = seekId;
+
+    if (playerReadyRef.current && playerRef.current?.seekTo) {
       ignoreSeekRef.current = true;
       playerRef.current.seekTo(seekTo, true);
       lastSeekRef.current = seekTo;
       setTimeout(() => { ignoreSeekRef.current = false; }, 2000);
+    } else {
+      // Player not ready yet, store as pending
+      pendingSeekRef.current = seekTo;
     }
-  }, [seekTo]);
+  }, [seekTo, seekId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
