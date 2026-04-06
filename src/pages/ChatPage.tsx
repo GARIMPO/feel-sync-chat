@@ -1075,6 +1075,7 @@ export default function ChatPage() {
           onTogglePlay={hasModPowers ? handleYouTubeToggle : () => {}}
           onClose={hasModPowers ? handleYouTubeClose : () => {}}
           onSeek={hasModPowers ? handleYouTubeSeek : undefined}
+          onTimeUpdate={hasModPowers ? handleYouTubeTimeUpdate : undefined}
           seekTo={ytSeekTo}
           readOnly={!hasModPowers}
         />
