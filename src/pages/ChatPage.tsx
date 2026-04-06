@@ -67,6 +67,7 @@ interface ChatMessage {
 interface EmotionEvent {
   emoji: string;
   id: string;
+  nickname?: string;
 }
 
 interface YouTubeEvent {
