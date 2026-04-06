@@ -678,9 +678,6 @@ export default function ChatPage() {
     channelRef.current?.publish("youtube-seek", { time });
   };
 
-  const handleYouTubeTimeUpdate = useCallback((time: number) => {
-    ytTimeRef.current = time;
-  }, []);
 
   const renderMessage = (msg: ChatMessage) => {
     const isSelf = msg.sender === nickname;
