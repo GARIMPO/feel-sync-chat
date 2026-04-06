@@ -470,6 +470,7 @@ export default function ChatPage() {
     channelRef.current.publish("youtube-sync-request", {});
   }, [joined, hasModPowers]);
 
+  if (!room) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
