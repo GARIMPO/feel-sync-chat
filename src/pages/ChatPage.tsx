@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { getAblyClient } from "@/lib/ably";
 import { encryptMessage, decryptMessage } from "@/lib/crypto";
 import { playBeep } from "@/lib/beep";
+import { getPublicRoom } from "@/store/publicRooms";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
