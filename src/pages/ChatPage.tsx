@@ -1075,6 +1075,7 @@ export default function ChatPage() {
           onSeek={hasModPowers ? handleYouTubeSeek : undefined}
           onTimeUpdate={hasModPowers ? handleYouTubeTimeUpdate : undefined}
           seekTo={ytSeekTo}
+          seekId={ytSeekId}
           readOnly={!hasModPowers}
         />
       )}
