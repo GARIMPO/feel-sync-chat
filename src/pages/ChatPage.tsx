@@ -191,6 +191,8 @@ export default function ChatPage() {
     return { videoId: null, isPlaying: false };
   });
   const [ytSeekTo, setYtSeekTo] = useState<number | null>(null);
+  const [translateLang, setTranslateLang] = useState("");
+  const [translatedCache, setTranslatedCache] = useState<Record<string, string>>({});
   const channelRef = useRef<Ably.RealtimeChannel | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activityInterval = useRef<ReturnType<typeof setInterval> | null>(null);
