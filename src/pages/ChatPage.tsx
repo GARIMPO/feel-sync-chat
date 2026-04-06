@@ -221,7 +221,7 @@ export default function ChatPage() {
     translateAll();
   }, [translateLang, messages]);
 
-
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
