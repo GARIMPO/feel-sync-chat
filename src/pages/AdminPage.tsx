@@ -98,6 +98,9 @@ export default function AdminPage() {
             </div>
             <h1 className="text-xl font-semibold text-foreground">Painel Admin</h1>
             <p className="text-sm text-muted-foreground">Entre para gerenciar salas</p>
+            <Button variant="link" size="sm" className="text-muted-foreground" onClick={() => navigate("/")}>
+              ← Voltar para página principal
+            </Button>
           </div>
           <div className="space-y-3">
             <Input placeholder="Login" value={login} onChange={(e) => setLogin(e.target.value)} autoFocus />
